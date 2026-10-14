@@ -1,69 +1,125 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import type { SearchResponse } from "./types";
 
 export default function Home() {
+  const [data, setData] = useState<SearchResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setData(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+      fetch(
+        `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=${page}`
+      )
+        .then((res) => res.json())
+.then((json) => {
+  if (!json.results) {
+    setError(json.status_message || "Something went wrong");
+    return;
+  }
+  setError(null);
+  setData(json);
+})
+.catch((err) => setError(err.message));
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [query, page]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="min-h-screen bg-neutral-950 p-8 text-white">
+      <h1 className="mb-4 text-2xl font-semibold">Movie Night</h1>
+
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setPage(1);
+        }}
+        placeholder="Search movies..."
+        className="mt-4 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-neutral-500 outline-none focus:border-violet-500"
+      />
+
+      {error && <p className="text-red-400">Error: {error}</p>}
+
+      {!query.trim() && (
+  <p className="mt-6 text-center text-neutral-500">
+    Start typing to search for movies.
+  </p>
+)}
+
+{query.trim() && !data && !error && (
+  <p className="mt-6 text-neutral-400">Loading...</p>
+)}
+
+      {data?.results && data.results.length > 0 && (
+        <ul className="mt-6 space-y-2">
+          {data.results.map((movie) => (
+            <li key={movie.id} className="flex gap-3 rounded-lg bg-white/5 p-2">
+              {movie.poster_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                  alt={movie.title}
+                  className="h-24 w-16 rounded object-cover"
+                />
+              ) : (
+                <div className="flex h-24 w-16 items-center justify-center rounded bg-white/10 text-xs text-neutral-500">
+                  No image
+                </div>
+              )}
+              <p className="self-center text-sm text-white">{movie.title}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {data?.results && data.results.length === 0 && (
+        <p className="mt-6 text-center text-neutral-400">
+          No movies found. Try a different search.
+        </p>
+      )}
+
+      {data?.results && data.results.length > 0 && (
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <button
+            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 1}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              page === 1
+                ? "cursor-not-allowed bg-white/5 text-neutral-600"
+                : "bg-white/10 text-white hover:bg-white/20"
+            }`}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            ← Previous
+          </button>
+
+          <span className="text-sm text-neutral-400">
+            Page {page} of {data.total_pages}
+          </span>
+
+          <button
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= data.total_pages}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              page >= data.total_pages
+                ? "cursor-not-allowed bg-white/5 text-neutral-600"
+                : "bg-white/10 text-white hover:bg-white/20"
+            }`}
           >
-            Documentation
-          </a>
+            Next →
+          </button>
         </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
