@@ -10,33 +10,43 @@ export default function Home() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (!query.trim()) {
-      setData(null);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-      fetch(
-        `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=${page}`
-      )
-        .then((res) => res.json())
-.then((json) => {
-  if (!json.results) {
-    setError(json.status_message || "Something went wrong");
+  if (!query.trim()) {
+    setData(null);
     return;
   }
-  setError(null);
-  setData(json);
-})
-.catch((err) => setError(err.message));
-    }, 400);
 
-    return () => clearTimeout(timer);
-  }, [query, page]);
+  let cancelled = false;
+
+  const timer = setTimeout(() => {
+    const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+    fetch(
+      `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&page=${page}`
+    )
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (!json.results) {
+          setError(json.status_message || "Something went wrong");
+          return;
+        }
+        setError(null);
+        setData(json);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err.message);
+      });
+  }, 400);
+
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}, [query, page]);
 
   return (
     <main className="min-h-screen bg-neutral-950 p-8 text-white">
+  <div className="mx-auto max-w-6xl">
       <h1 className="mb-4 text-2xl font-semibold">Movie Night</h1>
 
       <input
@@ -63,25 +73,27 @@ export default function Home() {
 )}
 
       {data?.results && data.results.length > 0 && (
-        <ul className="mt-6 space-y-2">
-          {data.results.map((movie) => (
-            <li key={movie.id} className="flex gap-3 rounded-lg bg-white/5 p-2">
-              {movie.poster_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-                  alt={movie.title}
-                  className="h-24 w-16 rounded object-cover"
-                />
-              ) : (
-                <div className="flex h-24 w-16 items-center justify-center rounded bg-white/10 text-xs text-neutral-500">
-                  No image
-                </div>
-              )}
-              <p className="self-center text-sm text-white">{movie.title}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+  <ul className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    {data.results.map((movie) => (
+      <li key={movie.id}>
+        <div className="aspect-[2/3] overflow-hidden rounded-lg bg-white/5">
+          {movie.poster_path ? (
+            <img
+              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+              alt={movie.title}
+              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
+              No image
+            </div>
+          )}
+        </div>
+        <p className="mt-2 line-clamp-2 text-sm text-white">{movie.title}</p>
+      </li>
+    ))}
+  </ul>
+)}
 
       {data?.results && data.results.length === 0 && (
         <p className="mt-6 text-center text-neutral-400">
@@ -120,6 +132,12 @@ export default function Home() {
           </button>
         </div>
       )}
+
+<footer className="mt-12 text-center text-xs text-neutral-600">
+      This product uses the TMDB API but is not endorsed or certified by TMDB.
+    </footer>
+      
+      </div>
     </main>
   );
 }
