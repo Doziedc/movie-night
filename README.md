@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Movie Night
+
+A movie search app powered by the TMDB API. Type to search, browse results with posters and pagination, and handle loading, empty, and error states gracefully.
+
+**[🔗 Live Demo](https://movie-night-cyan-six.vercel.app)**
+
+![Movie Night screenshot](./screenshot.png)
+
+## Features
+
+- 🔍 **Debounced search** — waits ~400ms after the last keystroke before firing a request
+- 📄 **Pagination** — browse through up to 500 pages of results per query
+- 🖼️ **Poster grid** — real movie posters loaded from TMDB's image CDN
+- ⚡ **Loading state** — feedback while a search is in flight
+- 🚫 **Empty state** — clear message when a search returns no results
+- ⚠️ **Error state with retry** — recovers from failed requests without a page reload
+- 🌙 **Dark UI** — built with Tailwind CSS
+
+## Tech Stack
+
+- **Next.js** (App Router)
+- **React** with hooks (`useState`, `useEffect`)
+- **TypeScript** with strict typing
+- **Tailwind CSS** for styling
+- **TMDB API** for movie data
+- **Vercel** for deployment
 
 ## Getting Started
 
-First, run the development server:
+\`\`\`bash
+git clone https://github.com/Doziedc/movie-night.git
+cd movie-night
+npm install
+\`\`\`
 
-```bash
+Create a `.env.local` file in the root:
+
+\`\`\`
+NEXT_PUBLIC_TMDB_API_KEY=your_tmdb_api_key_here
+\`\`\`
+
+Get a free key at [themoviedb.org](https://www.themoviedb.org/settings/api).
+
+Then run:
+
+\`\`\`bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What I Learned
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+I built this to practice fetching data from an external API in React and Next.js. My habit tracker before this used only local state. This project added real network requests, timing issues, and failure modes.
 
-## Learn More
+Some things I worked through:
 
-To learn more about Next.js, take a look at the following resources:
+- **Debouncing with cleanup** — without debouncing, every keystroke fires a fetch. I wrapped the fetch in a `setTimeout` and returned a `clearTimeout` cleanup from the effect. When the user types again, React calls the previous cleanup first, cancelling the pending timer. Only the last timer survives. This is the subscribe/unsubscribe pattern — every `useEffect` that sets up something (timer, subscription, socket) should return a cleanup that tears it down.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Race conditions** — even with debouncing, a slow response can arrive *after* a newer one and overwrite fresh results with stale data. `clearTimeout` only cancels pending timers, not fetches already in flight. Fixed with a `cancelled` flag captured in the effect's closure: the cleanup sets it to `true`, and both `.then()` and `.catch()` bail out if it's set. (The stricter fix is `AbortController`, which actually cancels the request at the network layer — I chose the flag for simplicity.)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Environment variables** — my TMDB key lives in `.env.local`, which is git-ignored so it never reaches GitHub. The `NEXT_PUBLIC_` prefix tells Next.js to expose the value to the browser. For TMDB that's fine (their keys are designed for client-side use), but for a paid API I'd keep the key server-side and proxy requests through a Next.js route handler.
 
-## Deploy on Vercel
+- **API error shapes** — TMDB doesn't always return `results`. When the key is invalid or the request is malformed, it returns `{ success: false, status_message: "..." }` instead. My first version assumed `results` was always there and crashed with "Cannot read properties of undefined". Fixed by checking `if (!json.results)` in the fetch callback and routing the bad response to the error state.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Type narrowing** — TypeScript doesn't know `data.results` is safe to access unless you guard it first. Using `data?.results && data.results.length > 0` before rendering narrows the type from `SearchResponse | null` to something safe.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Attribution
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+## Author
+
+**Akujobi Daniel**
+- GitHub: [@Doziedc](https://github.com/Doziedc)
+- Live: [movie-night-cyan-six.vercel.app](https://movie-night-cyan-six.vercel.app)
