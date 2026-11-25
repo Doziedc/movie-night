@@ -4,7 +4,7 @@ A movie search app powered by the TMDB API. Type to search, browse results with 
 
 **[🔗 Live Demo](https://movie-night-cyan-six.vercel.app)**
 
-![Movie Night screenshot](./screenshot.png)
+![Movie Night screenshot](./screenshot.png) 
 
 ## Features
 
